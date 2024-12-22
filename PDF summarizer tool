@@ -1,0 +1,54 @@
+import os
+from dotenv import load_dotenv
+import PyPDF2
+from IPython.display import Markdown, display
+from openai import OpenAI
+
+# Load environment variables
+load_dotenv()
+api_key = os.getenv('OPENAI_API_KEY')
+
+if not api_key:
+    raise ValueError("No API key found. Make sure to add it to the .env file.")
+
+openai = OpenAI()
+
+# Define System Prompt
+system_prompt = "You are an assistant that analyzes the contents of a PDF and provides a short summary, focusing on key sections and chapters."
+
+# PDF Document Class
+class PDFDocument:
+    def __init__(self, file_path):
+        self.file_path = file_path
+        with open(file_path, 'rb') as pdf_file:
+            reader = PyPDF2.PdfReader(pdf_file)
+            self.title = reader.metadata.title if reader.metadata and reader.metadata.title else "No title found"
+            self.text = ""
+            for page in reader.pages:
+                self.text += page.extract_text()
+
+# Prompt Functions
+def user_prompt_for_pdf(pdf):
+    user_prompt = f"You are analyzing a PDF titled {pdf.title}. The contents of this PDF are as follows:\n\n"
+    user_prompt += pdf.text
+    return user_prompt
+
+def messages_for_pdf(pdf):
+    return [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt_for_pdf(pdf)}
+    ]
+
+# Summarization Function
+def summarize_pdf(file_path):
+    pdf = PDFDocument(file_path)
+    response = openai.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=messages_for_pdf(pdf)
+    )
+    # Return the raw response text
+    return response.choices[0].message.content
+
+# Example usage
+summary = summarize_pdf("your-pdf-here.pdf")
+display(Markdown(summary))
