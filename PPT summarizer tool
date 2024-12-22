@@ -1,0 +1,69 @@
+import os
+from dotenv import load_dotenv
+from pptx import Presentation
+from openai import OpenAI
+from IPython.display import Markdown, display
+
+# Load environment variables
+load_dotenv()
+api_key = os.getenv('OPENAI_API_KEY')
+
+if not api_key:
+    raise ValueError("No API key found. Make sure to add it to the .env file.")
+
+openai = OpenAI()
+
+# Define System Prompt
+system_prompt = "You are an assistant that analyzes the contents of a PowerPoint presentation and provides a short summary, focusing on key sections and slides."
+
+# PowerPoint Document Class
+class PPTDocument:
+    def __init__(self, file_path):
+        self.file_path = file_path
+        self.title = "No title found"  # Default title if none found
+        self.text = ""
+        self.extract_text()
+
+    def extract_text(self):
+        # Load PowerPoint presentation
+        prs = Presentation(self.file_path)
+        
+        # Extract text from each slide
+        for slide in prs.slides:
+            for shape in slide.shapes:
+                if hasattr(shape, "text"):  # Check if shape has text
+                    if shape.text.strip() != "":  # Avoid empty text
+                        self.text += shape.text + "\n"  # Append slide text
+        
+        # Title can be extracted from the first slide (if applicable)
+        if prs.slides:
+            first_slide = prs.slides[0]
+            for shape in first_slide.shapes:
+                if hasattr(shape, "text") and shape.text:
+                    self.title = shape.text.strip()
+                    break  # Use the first non-empty text as title
+
+# Prompt Functions
+def user_prompt_for_ppt(ppt):
+    user_prompt = f"You are analyzing a PowerPoint presentation titled {ppt.title}. The contents of this presentation are as follows:\n\n"
+    user_prompt += ppt.text
+    return user_prompt
+
+def messages_for_ppt(ppt):
+    return [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt_for_ppt(ppt)}
+    ]
+
+# Summarization Function
+def summarize_ppt(file_path):
+    ppt = PPTDocument(file_path)
+    response = openai.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=messages_for_ppt(ppt)
+    )
+    return response.choices[0].message.content
+
+# Example usage
+summary = summarize_ppt("Your_ppt_file_here.pptx")  # Example PPT file
+display(Markdown(summary))
