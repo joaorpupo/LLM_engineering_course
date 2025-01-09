@@ -10,12 +10,7 @@ from bs4 import BeautifulSoup
 from IPython.display import Markdown, display, update_display
 from openai import OpenAI
 
-
-# In[3]:
-
-
 # Initialize and constants
-
 load_dotenv()
 api_key = os.getenv('OPENAI_API_KEY')
 
@@ -27,12 +22,7 @@ else:
 MODEL = 'gpt-4o-mini'
 openai = OpenAI()
 
-
-# In[4]:
-
-
 # A class to represent a Webpage
-
 # Some websites need you to use proper headers when fetching them:
 headers = {
  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36"
@@ -62,11 +52,12 @@ class Website:
         return f"Webpage Title:\n{self.title}\nWebpage Contents:\n{self.text}\n\n"
 
 
-# In[5]:
+# We can check how this step is going by uncommenting the following lines - we can use any website to try it - in case it doesn't work might mean that
+the site is protected against scraping and might need further coding to overcome it
 
 
-ed = Website("https://edwarddonner.com")
-ed.links
+# ed = Website("https://edwarddonner.com")
+# ed.links
 
 
 # ## First step: Have GPT-4o-mini figure out which links are relevant
@@ -78,9 +69,6 @@ ed.links
 # This is an excellent use case for an LLM, because it requires nuanced understanding. Imagine trying to code this without LLMs by parsing and analyzing the webpage - it would be very hard!
 # 
 # Sidenote: there is a more advanced technique called "Structured Outputs" in which we require the model to respond according to a spec. We cover this technique in Week 8 during our autonomous Agentic AI project.
-
-# In[6]:
-
 
 link_system_prompt = "You are provided with a list of links found on a webpage. \
 You are able to decide which of the links would be most relevant to include in a brochure about the company, \
@@ -95,15 +83,8 @@ link_system_prompt += """
 }
 """
 
-
-# In[7]:
-
-
-print(link_system_prompt)
-
-
-# In[8]:
-
+# You can test how the system prompt is coming along by uncommenting the following line
+# print(link_system_prompt)
 
 def get_links_user_prompt(website):
     user_prompt = f"Here is the list of links on the website of {website.url} - "
@@ -113,15 +94,8 @@ Do not include Terms of Service, Privacy, email links.\n"
     user_prompt += "\n".join(website.links)
     return user_prompt
 
-
-# In[9]:
-
-
+# You can test how the user prompt is coming along by uncommenting the following line
 print(get_links_user_prompt(ed))
-
-
-# In[10]:
-
 
 def get_links(url):
     website = Website(url)
@@ -136,28 +110,15 @@ def get_links(url):
     result = response.choices[0].message.content
     return json.loads(result)
 
-
-# In[11]:
-
-
-# Anthropic has made their site harder to scrape, so I'm using HuggingFace..
-
-huggingface = Website("https://huggingface.co")
-huggingface.links
-
-
-# In[12]:
-
+# You can check the links fetching code by uncommenting the following lines
+# huggingface = Website("https://huggingface.co")
+# huggingface.links
 
 get_links("https://huggingface.co")
 
 
-# ## Second step: make the brochure!
-# 
+# Second step: make the brochure!
 # Assemble all the details into another prompt to GPT4-o
-
-# In[13]:
-
 
 def get_all_details(url):
     result = "Landing page:\n"
@@ -169,29 +130,11 @@ def get_all_details(url):
         result += Website(link["url"]).get_contents()
     return result
 
-
-# In[14]:
-
-
 print(get_all_details("https://huggingface.co"))
-
-
-# In[15]:
-
 
 system_prompt = "You are an assistant that analyzes the contents of several relevant pages from a company website \
 and creates a short brochure about the company for prospective customers, investors and recruits. Respond in markdown.\
 Include details of company culture, customers and careers/jobs if you have the information."
-
-# Or uncomment the lines below for a more humorous brochure - this demonstrates how easy it is to incorporate 'tone':
-
-# system_prompt = "You are an assistant that analyzes the contents of several relevant pages from a company website \
-# and creates a short humorous, entertaining, jokey brochure about the company for prospective customers, investors and recruits. Respond in markdown.\
-# Include details of company culture, customers and careers/jobs if you have the information."
-
-
-# In[16]:
-
 
 def get_brochure_user_prompt(company_name, url):
     user_prompt = f"You are looking at a company called: {company_name}\n"
@@ -200,15 +143,8 @@ def get_brochure_user_prompt(company_name, url):
     user_prompt = user_prompt[:5_000] # Truncate if more than 5,000 characters
     return user_prompt
 
-
-# In[17]:
-
-
-get_brochure_user_prompt("HuggingFace", "https://huggingface.co")
-
-
-# In[18]:
-
+# You can test how is coming along by uncommenting the following lines
+# get_brochure_user_prompt("HuggingFace", "https://huggingface.co")
 
 def create_brochure(company_name, url):
     response = openai.chat.completions.create(
@@ -221,19 +157,12 @@ def create_brochure(company_name, url):
     result = response.choices[0].message.content
     display(Markdown(result))
 
-
-# In[19]:
-
-
-create_brochure("HuggingFace", "https://huggingface.com")
+# You can test how is coming along by uncommenting the following lines
+# create_brochure("HuggingFace", "https://huggingface.com")
 
 
-# ## Finally - a minor improvement
-# 
-# With a small adjustment, we can change this so that the results stream back from OpenAI,
-# with the familiar typewriter animation
-
-# In[20]:
+# Finally - a minor improvement
+# With a small adjustment, we can change this so that the results stream back from OpenAI, with the familiar typewriter animation
 
 
 def stream_brochure(company_name, url):
@@ -253,65 +182,4 @@ def stream_brochure(company_name, url):
         response = response.replace("```","").replace("markdown", "")
         update_display(Markdown(response), display_id=display_handle.display_id)
 
-
-# In[21]:
-
-
 stream_brochure("HuggingFace", "https://huggingface.co")
-
-
-# In[ ]:
-
-
-# Try changing the system prompt to the humorous version when you make the Brochure for Hugging Face:
-
-stream_brochure("HuggingFace", "https://huggingface.co")
-
-
-# <table style="margin: 0; text-align: left;">
-#     <tr>
-#         <td style="width: 150px; height: 150px; vertical-align: middle;">
-#             <img src="../business.jpg" width="150" height="150" style="display: block;" />
-#         </td>
-#         <td>
-#             <h2 style="color:#181;">Business applications</h2>
-#             <span style="color:#181;">In this exercise we extended the Day 1 code to make multiple LLM calls, and generate a document.
-# 
-# This is perhaps the first example of Agentic AI design patterns, as we combined multiple calls to LLMs. This will feature more in Week 2, and then we will return to Agentic AI in a big way in Week 8 when we build a fully autonomous Agent solution.
-# 
-# Generating content in this way is one of the very most common Use Cases. As with summarization, this can be applied to any business vertical. Write marketing content, generate a product tutorial from a spec, create personalized email content, and so much more. Explore how you can apply content generation to your business, and try making yourself a proof-of-concept prototype.</span>
-#         </td>
-#     </tr>
-# </table>
-
-# <table style="margin: 0; text-align: left;">
-#     <tr>
-#         <td style="width: 150px; height: 150px; vertical-align: middle;">
-#             <img src="../important.jpg" width="150" height="150" style="display: block;" />
-#         </td>
-#         <td>
-#             <h2 style="color:#900;">Before you move to Week 2 (which is tons of fun)</h2>
-#             <span style="color:#900;">Please see the week1 EXERCISE notebook for your challenge for the end of week 1. This will give you some essential practice working with Frontier APIs, and prepare you well for Week 2.</span>
-#         </td>
-#     </tr>
-# </table>
-
-# <table style="margin: 0; text-align: left;">
-#     <tr>
-#         <td style="width: 150px; height: 150px; vertical-align: middle;">
-#             <img src="../resources.jpg" width="150" height="150" style="display: block;" />
-#         </td>
-#         <td>
-#             <h2 style="color:#f71;">A reminder on 2 useful resources</h2>
-#             <span style="color:#f71;">1. The resources for the course are available <a href="https://edwarddonner.com/2024/11/13/llm-engineering-resources/">here.</a><br/>
-#             2. I'm on LinkedIn <a href="https://www.linkedin.com/in/eddonner/">here</a> and I love connecting with people taking the course!
-#             </span>
-#         </td>
-#     </tr>
-# </table>
-
-# In[ ]:
-
-
-
-
